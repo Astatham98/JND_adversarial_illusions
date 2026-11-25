@@ -35,7 +35,10 @@ gamma = config.get('gamma', 0.5)
 temperature = config.get('temperature', 0.5)
 
 device = f"cuda:{gpu_num}" if torch.cuda.is_available() else "cpu"
-eps = eps / 255
+if modality == 'audio':
+    eps = eps
+else:
+    eps = eps / 255
 estimator = CalculateJND(value_range=1.0, c_lt=0.3, pool_size=3).to(device)
 Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -155,19 +158,19 @@ def square_attack_linf(model, x, y, eps, n_iters, p_init, metrics_path, targeted
     if local_adv==None:
         # Temp
         init_delta = torch.zeros_like(x)
+        if modality == 'vision':
+            block_h = min(16, h)
+            block_w = min(16, w)
+            h0 = np.random.randint(0, h - block_h + 1)
+            w0 = np.random.randint(0, w - block_w + 1)
 
-        block_h = min(16, h)
-        block_w = min(16, w)
-        h0 = np.random.randint(0, h - block_h + 1)
-        w0 = np.random.randint(0, w - block_w + 1)
-
-        target = init_delta[:, :, h0:h0 + block_h, w0:w0 + block_w]
-        sign = torch.where(
-            torch.rand_like(target) < 0.5,
-            torch.tensor(-eps, device=x.device),
-            torch.tensor(eps, device=x.device),
-        )
-        init_delta[:, :, h0:h0 + block_h, w0:w0 + block_w] = sign
+            target = init_delta[:, :, h0:h0 + block_h, w0:w0 + block_w]
+            sign = torch.where(
+                torch.rand_like(target) < 0.5,
+                torch.tensor(-eps, device=x.device),
+                torch.tensor(eps, device=x.device),
+            )
+            init_delta[:, :, h0:h0 + block_h, w0:w0 + block_w] = sign
 
         # init_delta = torch.tensor(np.random.choice([-eps, eps], size=[x.shape[0], c, 1, w])).to(torch.float).to(device)
     else:
